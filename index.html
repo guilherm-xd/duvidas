@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Plataforma de Perguntas Anônimas</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html,body {
+      margin:0; padding:0; height:100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      overflow:hidden;
+      color: #111827;
+    }
+
+    .main-container {
+      display:flex;
+      height:100vh;
+      width:100%;
+      overflow:hidden;
+    }
+
+    .student-section {
+      flex:1;
+      background:#ffffff;
+      padding:40px;
+      display:flex;
+      flex-direction:column;
+      overflow-y:hidden;
+      position:relative;
+    }
+
+    .teacher-section {
+      flex:1;
+      background:#f8f9fa;
+      padding:40px;
+      display:flex;
+      flex-direction:column;
+      overflow-y:auto;
+      border-left:3px solid #e0e0e0;
+    }
+
+    .section-header {
+      margin-bottom:20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .section-title { font-size:28px; font-weight:700; margin:0; color:#2d3748; }
+    .section-subtitle { font-size:14px; color:#718096; margin:0; }
+
+    .dark-mode-toggle {
+      background:none;
+      border:none;
+      font-size:28px;
+      cursor:pointer;
+      padding:6px;
+      border-radius:8px;
+    }
+    .dark-mode-toggle:hover { transform:scale(1.05); }
+
+    .input-area {
+      background:#f7fafc; border:2px solid #e2e8f0; border-radius:12px;
+      padding:16px; margin-bottom:16px; min-height:70px; display:flex; flex-direction:column;
+    }
+
+    .textarea-label { font-size:14px; font-weight:600; color:#4a5568; margin-bottom:8px; }
+
+    textarea.question-textarea {
+      width:100%;
+      min-height:80px;
+      padding:12px;
+      border:1px solid #cbd5e0;
+      border-radius:8px;
+      font-size:16px;
+      resize:none;
+      overflow:hidden;
+      line-height:1.4;
+      background:transparent;
+      color:inherit;
+      font-family:inherit;
+    }
+
+    .drawing-area {
+      background:#ffffff;
+      border:2px dashed #cbd5e0;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:16px;
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .drawing-canvas {
+      width:100%;
+      height:250px;
+      border-radius:8px;
+      background:#ffffff;
+      cursor:crosshair;
+      display:block;
+    }
+
+    .canvas-controls { display:flex; gap:8px; justify-content:center; align-items:center; }
+    .canvas-btn {
+      padding:8px 12px;
+      background:#f7fafc;
+      border:1px solid #cbd5e0;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .send-button {
+      width:100%;
+      padding:14px;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      color:#fff; border:none; border-radius:10px; font-size:17px; cursor:pointer;
+      box-shadow:0 4px 8px rgba(0,0,0,0.15);
+      margin-top:6px;
+    }
+
+    .questions-list { display:flex; flex-direction:column; gap:20px; }
+
+    .question-card {
+      background:#ffffff;
+      border-radius:12px;
+      padding:16px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.06);
+      position:relative;
+      min-height:140px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .question-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      width:100%;
+    }
+
+    .question-title {
+      font-weight:700; color:#2d3748; margin:0; font-size:13px; padding:6px 8px;
+      border-radius:999px; background:#f1f5f9; display:inline-block;
+    }
+
+    .question-title.tachado { text-decoration:line-through; opacity:0.8; color:#475569; }
+
+    .answer-btn {
+      background:#22c55e; color:#fff; border:none; padding:8px 12px;
+      border-radius:8px; cursor:pointer; font-weight:700;
+    }
+
+    .question-text { margin:0; color:#2d3748; font-size:15px; white-space:pre-wrap; }
+    .question-text.tachado { text-decoration:line-through; opacity:0.8; color:#475569; }
+
+    .question-image-wrapper { background:transparent; padding:0; border-radius:8px; }
+    .question-image { width:100%; max-height:360px; object-fit:contain; display:block; background:#fff; border-radius:6px; }
+
+    .question-card.answered { background:#f0fdf4; }
+    .question-card.answered .question-title { background:#dcfce7; }
+    .question-card.answered .answer-btn { background:#059669; }
+
+    .question-time { font-size:13px; color:#718096; display:flex; gap:8px; align-items:center; }
+    .empty-state { text-align:center; padding:40px; color:#94a3b8; }
+
+    .modal {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,0.6); z-index:9999; visibility:hidden; opacity:0; transition:opacity .15s;
+    }
+    .modal.show { visibility:visible; opacity:1; }
+    .modal-content {
+      width:90%; max-width:1000px; background:#0b1220; padding:16px; border-radius:12px;
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .modal-content img { width:100%; height:auto; border-radius:8px; }
+
+    @media (max-width:768px) {
+      .main-container { flex-direction:column; }
+      .teacher-section { border-left:none; border-top:3px solid #e0e0e0; overflow:auto; }
+      html,body { overflow:auto; }
+      .section-header { flex-direction:column; align-items:flex-start; gap:8px; }
+    }
+
+    body.dark-mode { background: linear-gradient(135deg,#0f172a 0%,#1e293b 100%) !important; color:#e2e8f0; }
+    body.dark-mode .student-section,
+    body.dark-mode .teacher-section,
+    body.dark-mode .input-area,
+    body.dark-mode .drawing-area,
+    body.dark-mode .question-card,
+    body.dark-mode .canvas-btn,
+    body.dark-mode .send-button {
+      background-color:#0b1220 !important;
+      border-color:#1f2937 !important;
+      color:#e2e8f0 !important;
+    }
+
+    body.dark-mode .drawing-canvas { background:#ffffff !important; }
+    body.dark-mode .question-title { background: transparent !important; color: #e2e8f0 !important; }
+    body.dark-mode .question-title.tachado { color:#94a3b8 !important; opacity:0.95; }
+    body.dark-mode .question-text { color:#e2e8f0 !important; }
+    body.dark-mode .question-text.tachado { color:#94a3b8 !important; opacity:0.95; }
+    body.dark-mode .question-time { color:#94a3b8 !important; }
+    body.dark-mode .question-image { background:#fff; }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <section class="student-section">
+      <div class="section-header">
+        <div style="display:flex;flex-direction:column;">
+          <h1 class="section-title">📝 Envie sua pergunta</h1>
+          <p class="section-subtitle">Sua identidade permanece anônima</p>
+        </div>
+        <button class="dark-mode-toggle" id="dark-mode-toggle"><span id="mode-icon">🌙</span></button>
+      </div>
+
+      <div class="input-area">
+        <label class="textarea-label">Escreva sua pergunta:</label>
+        <textarea id="question-input" class="question-textarea" placeholder="Digite sua pergunta..." rows="1"></textarea>
+      </div>
+
+      <div class="drawing-area">
+        <label class="textarea-label">✏️ Ou faça um desenho:</label>
+        <canvas id="drawing-canvas" class="drawing-canvas"></canvas>
+        <div class="canvas-controls">
+          <button class="canvas-btn" id="clear-btn">🗑️ Limpar</button>
+          <button class="canvas-btn" id="eraser-btn">🧽</button>
+          <button class="canvas-btn" id="color-btn">🎨</button>
+          <input id="color-picker" type="color" style="display:none" value="#2d3748">
+        </div>
+      </div>
+
+      <button class="send-button" id="send-btn"><span>Enviar Pergunta Anônima</span></button>
+    </section>
+
+    <section class="teacher-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">👨‍🏫 Painel do Professor</h1>
+          <p class="section-subtitle">Perguntas recebidas</p>
+        </div>
+      </div>
+
+      <div class="questions-list" id="questions-list">
+        <div class="empty-state" id="empty-state">
+          <div style="font-size:48px">📭</div>
+          <p>Aguardando perguntas...</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="image-modal">
+    <div class="modal-content">
+      <button id="modal-close" style="align-self:flex-end;padding:6px 8px;border-radius:6px;background:#111;border:none;color:#fff;cursor:pointer">Fechar ✕</button>
+      <img id="modal-image"/>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'anon_questions_v2';
+
+    const canvas = document.getElementById('drawing-canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('color-picker');
+    const colorBtn = document.getElementById('color-btn');
+    const eraserBtn = document.getElementById('eraser-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const sendBtn = document.getElementById('send-btn');
+    const questionInput = document.getElementById('question-input');
+    const questionsList = document.getElementById('questions-list');
+    const emptyState = document.getElementById('empty-state');
+    const darkToggle = document.getElementById('dark-mode-toggle');
+    const modeIcon = document.getElementById('mode-icon');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const modalClose = document.getElementById('modal-close');
+
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let currentColor = '#2d3748';
+    let eraserMode = false;
+
+    function initCanvasSize() {
+      const ratio = window.devicePixelRatio || 1;
+      const cssW = canvas.clientWidth;
+      const cssH = canvas.clientHeight;
+
+      const temp = document.createElement('canvas');
+      temp.width = canvas.width;
+      temp.height = canvas.height;
+      temp.getContext('2d').drawImage(canvas, 0, 0);
+
+      canvas.width = cssW * ratio;
+      canvas.height = cssH * ratio;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cssW, cssH);
+      ctx.drawImage(temp, 0, 0, temp.width / ratio, temp.height / ratio);
+
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+    }
+    initCanvasSize();
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      return { x, y };
+    }
+
+    function start(e) {
+      isDrawing = true;
+      const p = getPos(e);
+      lastX = p.x;
+      lastY = p.y;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      e.preventDefault();
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+
+      const p = getPos(e);
+
+      if (eraserMode) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = 16;
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = 3;
+      }
+
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
+      lastX = p.x;
+      lastY = p.y;
+      e.preventDefault();
+    }
+
+    function end(e) {
+      if (!isDrawing) return;
+      isDrawing = false;
+      ctx.closePath();
+      ctx.globalCompositeOperation = 'source-over';
+      e.preventDefault();
+    }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive:false });
+    canvas.addEventListener('touchmove', draw, { passive:false });
+    canvas.addEventListener('touchend', end, { passive:false });
+    canvas.addEventListener('touchcancel', end, { passive:false });
+
+    clearBtn.addEventListener('click', () => {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+
+    colorBtn.addEventListener('click', () => colorPicker.click());
+    colorPicker.addEventListener('input', e => { currentColor = e.target.value; eraserMode = false; });
+
+    eraserBtn.addEventListener('click', () => {
+      eraserMode = !eraserMode;
+      eraserBtn.style.opacity = eraserMode ? '0.6' : '1';
+    });
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+    questionInput.addEventListener('input', () => autoResize(questionInput));
+    autoResize(questionInput);
+
+    function hasDrawing() {
+      const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+      for (let i=0;i<data.length;i+=16) {
+        const r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
+        if (!(r===255 && g===255 && b===255) && a!==0) return true;
+      }
+      return false;
+    }
+
+    function exportDrawing() {
+      const temp = document.createElement('canvas');
+      temp.width = canvas.width;
+      temp.height = canvas.height;
+      const tctx = temp.getContext('2d');
+      tctx.fillStyle = '#ffffff';
+      tctx.fillRect(0,0,temp.width,temp.height);
+      tctx.drawImage(canvas,0,0);
+      return temp.toDataURL('image/png');
+    }
+
+    function save(q) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(q));
+    }
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      try { return JSON.parse(raw); } catch { return []; }
+    }
+
+    function format(ts) {
+      const now = Date.now();
+      const diff = Math.floor((now - ts) / 1000);
+
+      if (diff < 5) return "agora mesmo";
+      if (diff < 60) return `há ${diff} segundos`;
+
+      const m = Math.floor(diff/60);
+      if (m < 60) return m==1 ? "há 1 minuto" : `há ${m} minutos`;
+
+      const h = Math.floor(m/60);
+      if (h < 24) return h==1 ? "há 1 hora" : `há ${h} horas`;
+
+      const d = Math.floor(h/24);
+      return d==1 ? "há 1 dia" : `há ${d} dias`;
+    }
+
+    function updateTimes() {
+      document.querySelectorAll('.time-text').forEach(el => {
+        el.textContent = format(Number(el.dataset.ts));
+      });
+    }
+
+    let questions = load();
+    let nextId = questions.reduce((m,q)=>Math.max(m,q.id||0),0)+1;
+
+    function render(q) {
+      const card = document.createElement('div');
+      card.className = 'question-card';
+      if (q.answered) card.classList.add('answered');
+
+      const header = document.createElement('div');
+      header.className = 'question-header';
+
+      const title = document.createElement('div');
+      title.className = 'question-title';
+      title.textContent = `Pergunta #${q.id}`;
+      if (q.answered) title.classList.add('tachado');
+
+      const btn = document.createElement('button');
+      btn.className = 'answer-btn';
+      btn.textContent = q.answered ? '↺ Reabrir' : '✓ Respondida';
+
+      btn.addEventListener('click', () => {
+        q.answered = !q.answered;
+
+        if (q.answered) {
+          card.classList.add('answered');
+          title.classList.add('tachado');
+          if (textEl) textEl.classList.add('tachado');
+          btn.textContent = '↺ Reabrir';
+        } else {
+          card.classList.remove('answered');
+          title.classList.remove('tachado');
+          if (textEl) textEl.classList.remove('tachado');
+          btn.textContent = '✓ Respondida';
+        }
+
+        save(questions);
+      });
+
+      header.appendChild(title);
+      header.appendChild(btn);
+      card.appendChild(header);
+
+      let textEl = null;
+      if (q.text.trim()) {
+        textEl = document.createElement('div');
+        textEl.className = 'question-text';
+        textEl.textContent = q.text;
+        if (q.answered) textEl.classList.add('tachado');
+        card.appendChild(textEl);
+      }
+
+      if (q.drawing) {
+        const wrap = document.createElement('div');
+        wrap.className = 'question-image-wrapper';
+        const img = document.createElement('img');
+        img.className = 'question-image';
+        img.src = q.drawing;
+        img.addEventListener('click', () => {
+          modalImage.src = q.drawing;
+          modal.classList.add('show');
+        });
+        wrap.appendChild(img);
+        card.appendChild(wrap);
+      }
+
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'question-time';
+      timeDiv.innerHTML = '<span class="time-icon">🕐</span> ';
+
+      const t = document.createElement('span');
+      t.className = 'time-text';
+      t.dataset.ts = q.createdAt;
+      t.textContent = format(q.createdAt);
+
+      timeDiv.appendChild(t);
+      card.appendChild(timeDiv);
+
+      return card;
+    }
+
+    function renderAll() {
+      questionsList.innerHTML = '';
+      if (!questions.length) {
+        questionsList.appendChild(emptyState);
+        return;
+      }
+      [...questions].sort((a,b)=>b.createdAt-a.createdAt).forEach(q => {
+        questionsList.appendChild(render(q));
+      });
+    }
+
+    renderAll();
+    updateTimes();
+    setInterval(updateTimes, 1000);
+
+    sendBtn.addEventListener('click', () => {
+      const text = questionInput.value.trim();
+      const drew = hasDrawing();
+
+      if (!text && !drew) {
+        sendBtn.textContent = "⚠️ Escreva ou desenhe algo!";
+        sendBtn.style.background = "#e53e3e";
+        setTimeout(() => {
+          sendBtn.textContent = "Enviar Pergunta Anônima";
+          sendBtn.style.background = "";
+        }, 1200);
+        return;
+      }
+
+      let d = null;
+      if (drew) d = exportDrawing();
+
+      const q = {
+        id: nextId++,
+        text,
+        drawing: d,
+        createdAt: Date.now(),
+        answered: false
+      };
+
+      questions.push(q);
+      save(questions);
+
+      questionInput.value = '';
+      autoResize(questionInput);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      renderAll();
+      updateTimes();
+    });
+
+    modalClose.addEventListener('click', () => {
+      modal.classList.remove('show');
+      modalImage.src = '';
+    });
+
+    modal.addEventListener('click', e => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+        modalImage.src = '';
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        modal.classList.remove('show');
+        modalImage.src = '';
+      }
+    });
+
+    darkToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      modeIcon.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    });
+
+    window.addEventListener('storage', e => {
+      if (e.key === STORAGE_KEY) {
+        questions = load();
+        renderAll();
+        updateTimes();
+      }
+    });
+  </script>
+</body>
+</html>
